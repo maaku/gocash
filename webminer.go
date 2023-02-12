@@ -3,11 +3,25 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
 	"unicode"
 )
+
+func GetTermsOfService() (string, error) {
+	resp, err := http.Get("https://webcash.org/terms/text")
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	return string(body), nil
+}
 
 type Amount uint64
 
@@ -95,6 +109,11 @@ func get_protocol_settings() (ProtocolSettings, error) {
 }
 
 func main() {
+	terms, err := GetTermsOfService()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(terms)
 	settings, err := get_protocol_settings()
 	if err != nil {
 		panic(err)
