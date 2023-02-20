@@ -11,7 +11,9 @@ import (
 )
 
 func GetTermsOfService() (string, error) {
-	resp, err := http.Get("https://webcash.org/terms/text")
+	const server = "https://webcash.org"
+
+	resp, err := http.Get(server + "/terms/text")
 	if err != nil {
 		return "", err
 	}
@@ -95,7 +97,9 @@ type ProtocolSettings struct {
 }
 
 func get_protocol_settings() (ProtocolSettings, error) {
-	resp, err := http.Get("https://webcash.org/api/v1/target")
+	const server = "https://webcash.org"
+
+	resp, err := http.Get(server + "/api/v1/target")
 	if err != nil {
 		return ProtocolSettings{}, err
 	}
