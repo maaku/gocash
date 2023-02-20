@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -121,6 +122,37 @@ func (amt *Amount) UnmarshalJSON(data []byte) error {
 		*amt = Amount(integer * 1_000_000_00)
 	}
 	return nil
+}
+
+type SecretWebcash struct {
+	// The actual secret, typically a 64-character hex string but in principle
+	// any Unicode string value.
+	Secret string `json:"secret"`
+	// The amount of Webcash held by the secret.
+	Amount Amount `json:"amount"`
+}
+
+func (sk SecretWebcash) String() string {
+	return fmt.Sprintf("e%v:secret:%s", sk.Amount, sk.Secret)
+}
+
+type PublicWebcash struct {
+	// The public hash, a 32-byte SHA-256 hash of the secret string.
+	Hash Uint256 `json:"hash"`
+	// The amount of Webcash held by the secret.
+	Amount Amount `json:"amount"`
+}
+
+func (pk PublicWebcash) String() string {
+	return fmt.Sprintf("e%v:public:%v", pk.Amount, pk)
+}
+
+// FromSecret converts a SecretWebcash to a PublicWebcash.
+func FromSecret(sk SecretWebcash) PublicWebcash {
+	return PublicWebcash{
+		Hash:   sha256.Sum256([]byte(sk.Secret)),
+		Amount: sk.Amount,
+	}
 }
 
 type ProtocolSettings struct {
