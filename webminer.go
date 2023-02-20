@@ -33,7 +33,13 @@ import (
 #include "libsha2/include/sha2/sha256.h"
 #include "libsha2/lib/common.c"
 #include "libsha2/lib/sha256.c"
+// ARM
 #include "libsha2/lib/sha256_armv8.c"
+// Intel
+#include "libsha2/lib/sha256_sse4.c"
+#include "libsha2/lib/sha256_sse41.c"
+#include "libsha2/lib/sha256_avx2.c"
+#include "libsha2/lib/sha256_shani.c"
 
 typedef struct sha256_ctx sha256_ctx_t;
 
