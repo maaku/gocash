@@ -23,9 +23,36 @@ import (
 	"sync/atomic"
 	"time"
 	"unicode"
+	"unsafe"
 
 	"golang.org/x/sync/errgroup"
 )
+
+/*
+#cgo CFLAGS: -Ilibsha2/include
+#include "libsha2/include/sha2/sha256.h"
+#include "libsha2/lib/common.c"
+#include "libsha2/lib/sha256.c"
+#include "libsha2/lib/sha256_armv8.c"
+
+typedef struct sha256_ctx sha256_ctx_t;
+
+void sha256_write_and_finalize8(struct sha256_ctx* ctx, const unsigned char nonce1[4], const unsigned char nonce2[4], const unsigned char final[4], const unsigned char hashes[8*32])
+{
+        unsigned char blocks[8*64] = { 0 };
+        int i;
+        for (i = 0; i < 8; ++i) {
+                memcpy(blocks + i*64 + 0, nonce1, 4);
+                memcpy(blocks + i*64 + 4, nonce2, 4);
+                memcpy(blocks + i*64 + 8, final, 4);
+                blocks[i*64 + 12] = 0x80; // padding byte
+                WriteBE64(blocks + i*64 + 56, (ctx->bytes + 12) << 3);
+                nonce2 += 4;
+        }
+        sha256_midstate((struct sha256*)hashes, ctx->s, blocks, 8);
+}
+*/
+import "C"
 
 func GetTermsOfService() (string, error) {
 	const server = "https://webcash.org"
@@ -577,8 +604,9 @@ func mining_thread(ctx context.Context, id int, solutions chan Solution) {
 		// ...which becomes 64 bytes when base64-encoded.
 		prefix = []byte(base64.StdEncoding.EncodeToString(prefix))
 		// And 64 bytes is the SHA256 block size, so we can compute a midstate
-		//midstate := sha256.New()
-		//midstate.Write(prefix)
+		var midstate C.sha256_ctx_t
+		C.sha256_init(&midstate)
+		C.sha256_update(&midstate, unsafe.Pointer(&prefix[0]), C.size_t(len(prefix)))
 
 		const W = 25 * 8
 		var hashes [W]Uint256
@@ -586,17 +614,9 @@ func mining_thread(ctx context.Context, id int, solutions chan Solution) {
 			for j := 0; j < 1000; j += W {
 				atomic.AddUint64(&g_attempts, W)
 
-				for k := 0; k < W; k++ {
-					// Compute the hash of the preimage
-					h := sha256.New()
-					h.Write(prefix)
-					h.Write(nonces[4*i : 4*i+4])
-					h.Write(nonces[4*(j+k) : 4*(j+k)+4])
-					h.Write(final)
-					// I would rather not have to copy the hash here, but Go
-					// doesn't like assigning a slice to an array
-					sum := h.Sum(nil)
-					copy(hashes[k][:], sum)
+				// Compute 200 hashes at once
+				for k := 0; k < W; k += 8 {
+					C.sha256_write_and_finalize8(&midstate, (*C.uint8_t)(&nonces[4*i]), (*C.uint8_t)(&nonces[4*(j+k)]), (*C.uint8_t)(&final[0]), (*C.uint8_t)(&hashes[k][0]))
 				}
 
 				for k := 0; k < W; k++ {
@@ -626,6 +646,9 @@ func main() {
 		panic(err)
 	}
 	fmt.Println(terms)
+
+	algo := C.GoString(C.sha256_auto_detect())
+	fmt.Println("Using SHA256 algorithm:", algo)
 
 	settings, err := get_protocol_settings()
 	if err != nil {
