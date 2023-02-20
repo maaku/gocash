@@ -63,7 +63,7 @@ func CheckProofOfWork(hash Uint256, difficulty uint8) bool {
 
 type Amount uint64
 
-func (amt Amount) MarshalJSON() ([]byte, error) {
+func (amt Amount) String() string {
 	integer := uint64(amt) / 1_000_000_00
 	decimal := uint64(amt) % 1_000_000_00
 	decimalString := strconv.FormatUint(decimal, 10)
@@ -76,9 +76,13 @@ func (amt Amount) MarshalJSON() ([]byte, error) {
 		for decimalString[len(decimalString)-1] == '0' {
 			decimalString = decimalString[:len(decimalString)-1]
 		}
-		return fmt.Sprintf("%d.%s", integer, decimalString), nil
+		return fmt.Sprintf("%d.%s", integer, decimalString)
 	}
-	return fmt.Sprintf("%d", integer), nil
+	return fmt.Sprintf("%d", integer)
+}
+
+func (amt Amount) MarshalJSON() ([]byte, error) {
+	return []byte(fmt.Sprintf("\"%s\"", fmt.Sprint(amt)[1:])), nil
 }
 
 func (amt *Amount) UnmarshalJSON(data []byte) error {
