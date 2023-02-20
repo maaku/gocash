@@ -76,8 +76,9 @@ func (amt Amount) MarshalJSON() ([]byte, error) {
 		for decimalString[len(decimalString)-1] == '0' {
 			decimalString = decimalString[:len(decimalString)-1]
 		}
+		return fmt.Sprintf("%d.%s", integer, decimalString), nil
 	}
-	return []byte(fmt.Sprintf("\"%d.%s\"", integer, decimalString)), nil
+	return fmt.Sprintf("%d", integer), nil
 }
 
 func (amt *Amount) UnmarshalJSON(data []byte) error {
