@@ -51,6 +51,13 @@ void sha256_write_and_finalize8(struct sha256_ctx* ctx, const unsigned char nonc
 	}
 	sha256_midstate((struct sha256*)hashes, ctx->s, blocks, 8);
 }
+
+void sha256_write_and_finalize_many(struct sha256_ctx* ctx, const unsigned char nonce1[4], const unsigned char nonce2[4], const unsigned char final[4], const unsigned char* hashes, unsigned int n)
+{
+	for (int k = 0; k < n; ++k) {
+		sha256_write_and_finalize8(ctx, nonce1, &nonce2[4*k], final, &hashes[k*8*32]);
+	}
+}
 */
 import "C"
 
@@ -614,10 +621,8 @@ func mining_thread(ctx context.Context, id int, solutions chan Solution) {
 			for j := 0; j < 1000; j += W {
 				atomic.AddUint64(&g_attempts, W)
 
-				// Compute 200 hashes at once
-				for k := 0; k < W; k += 8 {
-					C.sha256_write_and_finalize8(&midstate, (*C.uint8_t)(&nonces[4*i]), (*C.uint8_t)(&nonces[4*(j+k)]), (*C.uint8_t)(&final[0]), (*C.uint8_t)(&hashes[k][0]))
-				}
+				// Compute W-many hashes at once
+				C.sha256_write_and_finalize_many(&midstate, (*C.uint8_t)(&nonces[4*i]), (*C.uint8_t)(&nonces[4*j]), (*C.uint8_t)(&final[0]), (*C.uint8_t)(&hashes[0][0]), W/8)
 
 				for k := 0; k < W; k++ {
 					if hashes[k][0] == 0 && hashes[k][1] == 0 {
