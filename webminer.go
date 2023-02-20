@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/bits"
 	"net/http"
 	"strconv"
 	"strings"
@@ -23,6 +24,41 @@ func GetTermsOfService() (string, error) {
 		return "", err
 	}
 	return string(body), nil
+}
+
+type Uint256 [32]byte
+
+func (hash Uint256) String() string {
+	// encode as hex
+	return fmt.Sprintf("0x%x", hash[:])
+}
+
+func ApparentDifficulty(hash Uint256) uint8 {
+	diff := 0
+	for i := 0; i < 32; i++ {
+		c := hash[i]
+		if c == 0 {
+			diff += 8
+			continue
+		}
+		diff += bits.LeadingZeros8(c)
+		break
+	}
+	return uint8(diff)
+}
+
+func CheckProofOfWork(hash Uint256, difficulty uint8) bool {
+	for i := 0; i < int(difficulty/8); i++ {
+		if hash[i] != 0 {
+			return false
+		}
+	}
+	if difficulty%8 != 0 {
+		if hash[difficulty/8]>>(8-difficulty%8) != 0 {
+			return false
+		}
+	}
+	return true
 }
 
 type Amount uint64
