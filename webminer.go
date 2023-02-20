@@ -177,11 +177,13 @@ func get_protocol_settings() (ProtocolSettings, error) {
 		return ProtocolSettings{}, err
 	}
 	defer resp.Body.Close()
+
 	var settings ProtocolSettings
 	err = json.NewDecoder(resp.Body).Decode(&settings)
 	if err != nil {
 		return ProtocolSettings{}, err
 	}
+
 	return settings, nil
 }
 
@@ -191,6 +193,7 @@ func main() {
 		panic(err)
 	}
 	fmt.Println(terms)
+
 	settings, err := get_protocol_settings()
 	if err != nil {
 		panic(err)
