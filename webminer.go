@@ -39,17 +39,17 @@ typedef struct sha256_ctx sha256_ctx_t;
 
 void sha256_write_and_finalize8(struct sha256_ctx* ctx, const unsigned char nonce1[4], const unsigned char nonce2[4], const unsigned char final[4], const unsigned char hashes[8*32])
 {
-        unsigned char blocks[8*64] = { 0 };
-        int i;
-        for (i = 0; i < 8; ++i) {
-                memcpy(blocks + i*64 + 0, nonce1, 4);
-                memcpy(blocks + i*64 + 4, nonce2, 4);
-                memcpy(blocks + i*64 + 8, final, 4);
-                blocks[i*64 + 12] = 0x80; // padding byte
-                WriteBE64(blocks + i*64 + 56, (ctx->bytes + 12) << 3);
-                nonce2 += 4;
-        }
-        sha256_midstate((struct sha256*)hashes, ctx->s, blocks, 8);
+	unsigned char blocks[8*64] = { 0 };
+	int i;
+	for (i = 0; i < 8; ++i) {
+		memcpy(blocks + i*64 + 0, nonce1, 4);
+		memcpy(blocks + i*64 + 4, nonce2, 4);
+		memcpy(blocks + i*64 + 8, final, 4);
+		blocks[i*64 + 12] = 0x80; // padding byte
+		WriteBE64(blocks + i*64 + 56, (ctx->bytes + 12) << 3);
+		nonce2 += 4;
+	}
+	sha256_midstate((struct sha256*)hashes, ctx->s, blocks, 8);
 }
 */
 import "C"
