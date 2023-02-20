@@ -30,6 +30,7 @@ import (
 
 /*
 #cgo CFLAGS: -Ilibsha2/include
+#cgo amd64 386 CFLAGS: -march=znver1
 #include "libsha2/include/sha2/sha256.h"
 #include "libsha2/lib/common.c"
 #include "libsha2/lib/sha256.c"
