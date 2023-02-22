@@ -297,7 +297,7 @@ type Solution struct {
 	// The hash of the solution.
 	Hash Uint256 `json:"hash"`
 	// The base64-encoded mining payload.
-	Preimage []byte `json:"preimage"`
+	Preimage string `json:"preimage"`
 	// The reward to the miner
 	Reward SecretWebcash `json:"reward"`
 	// The committed difficulty
@@ -314,19 +314,19 @@ type MiningReport struct {
 	// The hash of the solution.
 	Hash Uint256
 	// The base64-encoded mining payload.
-	Preimage []byte
+	Preimage string
 }
 
 func (report MiningReport) MarshalJSON() ([]byte, error) {
 	// Serialize preimage as string
-	preimage, err := json.Marshal(string(report.Preimage))
+	preimage, err := json.Marshal(report.Preimage)
 	if err != nil {
 		return nil, err
 	}
 	// Convert hash to decimal notation
 	work := new(big.Int).SetBytes(report.Hash[:]).String()
 	// Serialize as JSON
-	return []byte(fmt.Sprintf(`{"preimage":%s,"work":%s,"legalese":{"terms":true}}`, string(preimage), string(work))), nil
+	return []byte(fmt.Sprintf(`{"preimage":%s,"work":%s,"legalese":{"terms":true}}`, preimage, string(work))), nil
 }
 
 func submit_solution(soln Solution) error {
@@ -636,8 +636,8 @@ func mining_thread(ctx context.Context, id int, solutions chan Solution) {
 					if hashes[k][0] == 0 && hashes[k][1] == 0 {
 						if CheckProofOfWork(hashes[k], settings.Difficulty) {
 							// We found a solution!
-							payload := bytes.Join([][]byte{prefix, nonces[4*i : 4*i+4], nonces[4*(j+k) : 4*(j+k)+4], final}, []byte{})
-							fmt.Println("GOT SOLUTION!!!", string(payload), hashes[k])
+							payload := string(bytes.Join([][]byte{prefix, nonces[4*i : 4*i+4], nonces[4*(j+k) : 4*(j+k)+4], final}, []byte{}))
+							fmt.Println("GOT SOLUTION!!!", payload, hashes[k])
 							solutions <- Solution{
 								Hash:       hashes[k],
 								Preimage:   payload,
