@@ -370,8 +370,9 @@ func submit_solution(soln Solution) error {
 	}
 
 	// Update difficulty, if necessary
-	if difficulty, ok := result["difficulty"]; ok {
-		if difficulty, ok := difficulty.(uint8); ok {
+	if difficulty, ok := result["difficulty_target"]; ok {
+		if difficulty, ok := difficulty.(float64); ok {
+			difficulty := uint8(difficulty)
 			g_state_mutex.Lock()
 			old_difficulty := g_settings.Difficulty
 			g_settings.Difficulty = difficulty
