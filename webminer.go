@@ -200,7 +200,7 @@ type PublicWebcash struct {
 }
 
 func (pk PublicWebcash) String() string {
-	return fmt.Sprintf("e%v:public:%v", pk.Amount, pk)
+	return fmt.Sprintf("e%v:public:%v", pk.Amount, pk.Hash)
 }
 
 // FromSecret converts a SecretWebcash to a PublicWebcash.
