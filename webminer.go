@@ -50,12 +50,11 @@ void sha256_write_and_finalize8(struct sha256_ctx* ctx, const unsigned char nonc
 	unsigned char blocks[8*64] = { 0 };
 	int i;
 	for (i = 0; i < 8; ++i) {
-		memcpy(blocks + i*64 + 0, nonce1, 4);
-		memcpy(blocks + i*64 + 4, nonce2, 4);
-		memcpy(blocks + i*64 + 8, final, 4);
+		memcpy(blocks + 64*i + 0, nonce1, 4);
+		memcpy(blocks + 64*i + 4, nonce2 + 4*i, 4);
+		memcpy(blocks + 64*i + 8, final, 4);
 		blocks[i*64 + 12] = 0x80; // padding byte
-		WriteBE64(blocks + i*64 + 56, (ctx->bytes + 12) << 3);
-		nonce2 += 4;
+		WriteBE64(blocks + 64*i + 56, (ctx->bytes + 12) << 3);
 	}
 	sha256_midstate((struct sha256*)hashes, ctx->s, blocks, 8);
 }
@@ -63,7 +62,7 @@ void sha256_write_and_finalize8(struct sha256_ctx* ctx, const unsigned char nonc
 void sha256_write_and_finalize_many(struct sha256_ctx* ctx, const unsigned char nonce1[4], const unsigned char nonce2[4], const unsigned char final[4], const unsigned char* hashes, unsigned int n)
 {
 	for (int k = 0; k < n; ++k) {
-		sha256_write_and_finalize8(ctx, nonce1, &nonce2[4*k], final, &hashes[k*8*32]);
+		sha256_write_and_finalize8(ctx, nonce1, &nonce2[k*8*4], final, &hashes[k*8*32]);
 	}
 }
 */
