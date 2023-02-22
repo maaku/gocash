@@ -553,6 +553,7 @@ func mining_thread(ctx context.Context, id int, solutions chan Solution) {
 	// Close the JSON object: '}'
 	final := []byte("fQ==")
 
+Restart:
 	for {
 		select {
 		case <-ctx.Done():
@@ -645,6 +646,10 @@ func mining_thread(ctx context.Context, id int, solutions chan Solution) {
 								Difficulty: settings.Difficulty,
 								Timestamp:  now,
 							}
+							// Any other valid solutions in this batch will
+							// conflict with the one that we have already found,
+							// since secrets may be used only once.
+							continue Restart
 						}
 					}
 				}
