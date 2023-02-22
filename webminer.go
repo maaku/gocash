@@ -387,7 +387,7 @@ func submit_solution(soln Solution) error {
 	// orphan log.
 	if error, ok := result["error"]; resp.StatusCode != 200 && !(resp.StatusCode == 400 && ok && error == "Didn't use a new secret value.") {
 		// Server rejected the solution.  Save it to the orphan log.
-		fmt.Println("Server rejected MiningReport:", resp)
+		fmt.Println("Server rejected MiningReport:", error, resp)
 		// Save the solution to the orphan log
 		f, err := os.OpenFile("orphan.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
