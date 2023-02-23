@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math"
 	"math/big"
 	"math/bits"
@@ -352,7 +351,7 @@ func submit_solution(soln Solution) error {
 	}
 
 	// Read the response body
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		// A malformed server response could also be a transient error.
 		// We requeue the solution to the channel.
