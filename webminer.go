@@ -637,7 +637,7 @@ Restart:
 						if CheckProofOfWork(hashes[k], settings.Difficulty) {
 							// We found a solution!
 							payload := string(bytes.Join([][]byte{prefix, nonces[4*i : 4*i+4], nonces[4*(j+k) : 4*(j+k)+4], final}, []byte{}))
-							fmt.Println("GOT SOLUTION!!!", payload, hashes[k])
+							fmt.Println("GOT SOLUTION!!!", payload, hashes[k], keep.String())
 							solutions <- Solution{
 								Hash:       hashes[k],
 								Preimage:   payload,
