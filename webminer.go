@@ -70,7 +70,7 @@ void sha256_write_and_finalize_many(struct sha256_ctx* ctx, const unsigned char 
 import "C"
 
 func GetTermsOfService() (string, error) {
-	const server = "https://webcash.org"
+	const server = "http://127.0.0.1:8000"
 
 	resp, err := http.Get(server + "/terms/text")
 	if err != nil {
@@ -193,6 +193,10 @@ func (sk SecretWebcash) String() string {
 	return fmt.Sprintf("e%v:secret:%s", sk.Amount, sk.Secret)
 }
 
+func (sk SecretWebcash) MarshalJSON() ([]byte, error) {
+	return []byte(fmt.Sprintf("\"%s\"", sk.String())), nil
+}
+
 type PublicWebcash struct {
 	// The public hash, a 32-byte SHA-256 hash of the secret string.
 	Hash Uint256 `json:"hash"`
@@ -202,6 +206,10 @@ type PublicWebcash struct {
 
 func (pk PublicWebcash) String() string {
 	return fmt.Sprintf("e%v:public:%v", pk.Amount, pk)
+}
+
+func (sk PublicWebcash) MarshalJSON() ([]byte, error) {
+	return []byte(fmt.Sprintf("\"%s\"", sk.String())), nil
 }
 
 // FromSecret converts a SecretWebcash to a PublicWebcash.
@@ -227,7 +235,7 @@ type ProtocolSettings struct {
 }
 
 func get_protocol_settings() (ProtocolSettings, error) {
-	const server = "https://webcash.org"
+	const server = "http://127.0.0.1:8000"
 
 	resp, err := http.Get(server + "/api/v1/target")
 	if err != nil {
@@ -330,7 +338,7 @@ func (report MiningReport) MarshalJSON() ([]byte, error) {
 }
 
 func submit_solution(soln Solution) error {
-	const server = "https://webcash.org"
+	const server = "http://127.0.0.1:8000"
 
 	// Serialize the mining report as JSON
 	report, err := json.Marshal(MiningReport{
@@ -653,6 +661,93 @@ func mining_thread(ctx context.Context, id int, solutions chan Solution) {
 	}
 }
 
+type LegalTerms struct {
+	Terms bool `json:"terms"`
+}
+
+type ReplaceWebcash struct {
+	Inputs  []SecretWebcash `json:"webcashes"`
+	Outputs []SecretWebcash `json:"new_webcashes"`
+	Terms   LegalTerms      `json:"legalese"`
+}
+
+func submit_replacement(replacement []byte) error {
+	const server = "http://127.0.0.1:8000"
+
+	// Send the replacement to the server
+	resp, err := http.Post(server+"/api/v1/replace", "application/json", bytes.NewReader(replacement))
+	if err != nil {
+		// A network error should be reported.
+		fmt.Println("Error: invalid server response to replacement request:", err)
+		return err
+	}
+
+	// Read the response body
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		// A malformed server response could also be a transient error.
+		// We requeue the solution to the channel.
+		fmt.Println("Error: invalid message body in response to replacement request:", err)
+		return err
+	}
+	defer resp.Body.Close()
+
+	var result map[string]interface{}
+	if err := json.Unmarshal([]byte(body), &result); err != nil {
+		// The server did not return a JSON object.  Again, we assume
+		// this is due to a transient error and requeue the solution.
+		fmt.Println("Error: response to replacement request is not a JSON object:", err)
+		return err
+	}
+
+	// Check the result
+	if string(body) != `{"status":"success"}` {
+		fmt.Println("Error: server rejected replacement request:", string(body))
+		return err
+	}
+
+	return nil
+}
+
+var counter uint64 = 0
+
+func benchmark_thread(ctx context.Context, id int, hi_secret SecretWebcash, lo_secret0 SecretWebcash, lo_secret1 SecretWebcash) {
+	txs := make([]ReplaceWebcash, 2)
+	txs[0].Inputs = []SecretWebcash{hi_secret}
+	txs[0].Outputs = []SecretWebcash{lo_secret0, lo_secret1}
+	txs[0].Terms.Terms = true
+	txs[1].Inputs = []SecretWebcash{lo_secret0, lo_secret1}
+	txs[1].Outputs = []SecretWebcash{hi_secret}
+	txs[1].Terms.Terms = true
+	txs_json := make([][]byte, len(txs))
+	for i := range txs {
+		var err error
+		txs_json[i], err = json.Marshal(txs[i])
+		if err != nil {
+			panic(err)
+		}
+	}
+	for {
+		select {
+		case <-ctx.Done():
+			fmt.Println("closing mining thread", id)
+			return
+		default:
+
+			err := submit_replacement(txs_json[0])
+			if err != nil {
+				panic(err)
+			}
+			atomic.AddUint64(&counter, 1)
+			err = submit_replacement(txs_json[1])
+			if err != nil {
+				panic(err)
+			}
+			atomic.AddUint64(&counter, 1)
+		}
+	}
+}
+
 func main() {
 	terms, err := GetTermsOfService()
 	if err != nil {
@@ -692,6 +787,65 @@ func main() {
 
 	solutions := make(chan Solution)
 
+	num_threads := runtime.NumCPU()
+
+	root_secret := SecretWebcash{
+		Amount: 190000 * 100000000,
+		Secret: "faDOu30cja/Tt28X79d1nanX",
+	}
+
+	// Make an array of SecretWebcash structs, one for each CPU core.
+	hi_secrets := make([]SecretWebcash, num_threads)
+	for i := 0; i < num_threads; i++ {
+		data := make([]byte, 16)
+		_, err = rand.Read(data[:])
+		if err != nil {
+			panic(err)
+		}
+		hi_secrets[i].Amount = 2
+		hi_secrets[i].Secret = base64.StdEncoding.EncodeToString(data[:])
+	}
+
+	// Make an array of SecretWebcash structs, two for each CPU core.
+	lo_secrets := make([]SecretWebcash, 2*num_threads)
+	for i := 0; i < 2*num_threads; i++ {
+		data := make([]byte, 16)
+		_, err = rand.Read(data[:])
+		if err != nil {
+			panic(err)
+		}
+		lo_secrets[i].Amount = 1
+		lo_secrets[i].Secret = base64.StdEncoding.EncodeToString(data[:])
+	}
+
+	extra_secret := SecretWebcash{
+		Amount: (Amount)(190000*100000000 - 2*num_threads),
+		Secret: "extra-secret",
+	}
+
+	replace := ReplaceWebcash{
+		Inputs:  make([]SecretWebcash, 0),
+		Outputs: make([]SecretWebcash, 0),
+		Terms:   LegalTerms{Terms: true},
+	}
+	replace.Inputs = append(replace.Inputs, root_secret)
+	for i := 0; i < num_threads; i++ {
+		replace.Outputs = append(replace.Outputs, hi_secrets[i])
+	}
+	replace.Outputs = append(replace.Outputs, extra_secret)
+
+	// Serialize the replacement as JSON
+	replace_json, err := json.Marshal(replace)
+	if err != nil {
+		// Should never happen!
+		panic(err)
+	}
+
+	err = submit_replacement(replace_json)
+	if err != nil {
+		panic(err)
+	}
+
 	// goroutine which periodically queries the webcash server for change in
 	// difficulty or subsidy, and submits solution mining reports.
 	g.Go(func() error {
@@ -700,10 +854,11 @@ func main() {
 	})
 
 	// goroutine which performs mining
-	for i := 0; i < runtime.NumCPU(); i++ {
+	for i := 0; i < num_threads; i++ {
 		id := i
 		g.Go(func() error {
-			mining_thread(gctx, id, solutions)
+			//mining_thread(gctx, id, solutions)
+			benchmark_thread(gctx, id, hi_secrets[id], lo_secrets[2*id], lo_secrets[2*id+1])
 			return nil
 		})
 	}
@@ -715,4 +870,27 @@ func main() {
 	} else {
 		fmt.Println("all goroutines exited")
 	}
+
+	// Move the webcash back to the original secret.
+	replace.Inputs = make([]SecretWebcash, 0)
+	replace.Outputs = make([]SecretWebcash, 0)
+	for i := 0; i < num_threads; i++ {
+		replace.Inputs = append(replace.Inputs, hi_secrets[i])
+	}
+	replace.Inputs = append(replace.Inputs, extra_secret)
+	replace.Outputs = append(replace.Outputs, root_secret)
+
+	// Serialize the replacement as JSON
+	replace_json, err = json.Marshal(replace)
+	if err != nil {
+		// Should never happen!
+		panic(err)
+	}
+
+	err = submit_replacement(replace_json)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println("done", counter, "replacement transactions")
 }
