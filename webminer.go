@@ -44,7 +44,7 @@ import (
 
 typedef struct sha256_ctx sha256_ctx_t;
 
-void sha256_write_and_finalize8(struct sha256_ctx* ctx, const unsigned char nonce1[4], const unsigned char nonce2[4], const unsigned char final[4], const unsigned char hashes[8*32])
+void sha256_write_and_finalize8(unsigned char hashes[8*32], const struct sha256_ctx* ctx, const unsigned char nonce1[4], const unsigned char nonce2[4], const unsigned char final[4])
 {
 	unsigned char blocks[8*64] = { 0 };
 	int i;
@@ -58,10 +58,10 @@ void sha256_write_and_finalize8(struct sha256_ctx* ctx, const unsigned char nonc
 	sha256_midstate((struct sha256*)hashes, ctx->s, blocks, 8);
 }
 
-void sha256_write_and_finalize_many(struct sha256_ctx* ctx, const unsigned char nonce1[4], const unsigned char nonce2[4], const unsigned char final[4], const unsigned char* hashes, unsigned int n)
+void sha256_write_and_finalize_many(unsigned char* hashes, unsigned int n, struct sha256_ctx* ctx, const unsigned char nonce1[4], const unsigned char nonce2[4], const unsigned char final[4])
 {
 	for (int k = 0; k < n; ++k) {
-		sha256_write_and_finalize8(ctx, nonce1, &nonce2[k*8*4], final, &hashes[k*8*32]);
+		sha256_write_and_finalize8(&hashes[k*8*32], ctx, nonce1, &nonce2[k*8*4], final);
 	}
 }
 */
@@ -630,7 +630,7 @@ Restart:
 				atomic.AddUint64(&g_attempts, W)
 
 				// Compute W-many hashes at once
-				C.sha256_write_and_finalize_many(&midstate, (*C.uint8_t)(&nonces[4*i]), (*C.uint8_t)(&nonces[4*j]), (*C.uint8_t)(&final[0]), (*C.uint8_t)(&hashes[0][0]), W/8)
+				C.sha256_write_and_finalize_many((*C.uint8_t)(&hashes[0][0]), W/8, &midstate, (*C.uint8_t)(&nonces[4*i]), (*C.uint8_t)(&nonces[4*j]), (*C.uint8_t)(&final[0]))
 
 				for k := 0; k < W; k++ {
 					if hashes[k][0] == 0 && hashes[k][1] == 0 {
