@@ -1,3 +1,9 @@
+[submodule "bstring"]
+	path = bstring
+	url = https://github.com/msteinert/bstring
 [submodule "libsha2"]
 	path = libsha2
 	url = https://github.com/maaku/libsha2
+[submodule "libwebcash"]
+	path = libwebcash
+	url = https://github.com/maaku/libwebcash
