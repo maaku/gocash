@@ -33,6 +33,7 @@ import (
 #cgo CFLAGS: -Ilibwebcash/include
 #cgo CFLAGS: -Ilibwebcash/lib
 #cgo amd64 386 CFLAGS: -march=znver1
+#cgo arm64 CFLAGS: -march=armv8-a+crypto
 // bstring
 #include "bstring/bstring/bstrlib.c"
 #include "bstring/bstring/bstraux.c"
