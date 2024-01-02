@@ -1,5 +1,5 @@
-# Use the official golang 1.19 bullseye image as the base image
-FROM golang:1.19-bullseye AS base
+# Use the official golang 1.21 bookworm image as the base image
+FROM golang:1.21-bookworm AS base
 
 # Set the working directory to /gocash
 WORKDIR /gocash
