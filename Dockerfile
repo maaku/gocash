@@ -12,6 +12,7 @@ RUN apt-get update -qq && \
     apt-get install -y build-essential git && \
 		rm -rf /var/lib/apt/lists /var/cache/apt/archives
 
+# Install latest version of libsha2
 RUN git clone https://github.com/maaku/libsha2
 
 # pre-copy/cache go.mod for pre-downloading dependencies and only redownloading them in subsequent builds if they change
